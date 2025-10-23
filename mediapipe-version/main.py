@@ -62,7 +62,7 @@ def draw_landmarks_on_image(rgb_image, detection_result):
 OPTIONS = HandLandmarkerOptions(
     base_options=BaseOptions(model_asset_buffer=MODEL_BYTES),
     running_mode=VisionRunningMode.LIVE_STREAM,
-    num_hands=2,
+    num_hands=1,
     min_hand_detection_confidence=0.7,
     min_hand_presence_confidence=0.7,
     min_tracking_confidence=0.7,
