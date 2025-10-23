@@ -11,10 +11,14 @@ class CameraFeed:
         else:
             self.rval = False
 
-    async def show(self):
+    async def show(self, frame = None):
+        if frame is not None:
+            self.frame = frame
         cv2.namedWindow("Camera Feed")
         while self.rval:
-            cv2.imshow("Camera Feed", self.frame)
+            # flip horizontally for a mirrored camera view
+            flipped = cv2.flip(self.frame, 1)
+            cv2.imshow("Camera Feed", flipped)
             self.rval, self.frame = self.vc.read()
             key = cv2.waitKey(20)
             if key == 27: # exit on ESC
@@ -30,18 +34,3 @@ class CameraFeed:
             return self.frame
         else:
             raise Exception("No frame available, maybe camera was already closed.")
-    
-
-# Function for example usage
-async def main(fps=10):
-    camera_feed = CameraFeed()
-
-    # You can start a the camera feed display in a separate thread this way
-    asyncio.create_task(asyncio.to_thread(functools.partial(asyncio.run, camera_feed.show())))
-
-    while True:
-        frame = camera_feed.get_frame()
-        await asyncio.sleep(1 / fps)  # Simulate processing at given fps
-
-if __name__ == "__main__":
-    asyncio.run(main())
