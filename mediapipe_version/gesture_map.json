@@ -1,0 +1,7 @@
+{
+  "pinch": "left_click",
+  "open_palm": "move",
+  "fist": "right_click",
+  "two_fingers": "scroll_up",
+  "thumbs_up": "scroll_down"
+}
