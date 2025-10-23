@@ -77,7 +77,3 @@ Mindkét implementáció ugyanazt a `gesture-map.json`-t használja a leképezé
 - Finomhangolni a gesztusérzékenységet mindkét implementációnál.
 - Hozzáadni konfigurációs fájlt (pl. `config.yaml`) a küszöbértékek és a kamera index beállításához.
 - Tesztek hozzáadása a gesztusdetektorokhoz (unit tesztek heuristikákra).
-
----
-
-Ha szeretnéd, most lefuttatom a változtatásokat, vagy létrehozom az `opencv-version/` fájlokat a munkakönyvtárban. Mit szeretnél, folytassam azonnal az implementációval?
