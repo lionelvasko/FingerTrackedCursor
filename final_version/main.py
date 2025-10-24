@@ -12,7 +12,7 @@ async def main(fps=10):
     try:
         while True:
             frame = camera_feed.get_frame()
-            frame_with_hand = hand_detector.detect(frame)
+            frame_with_hand = hand_detector.detect_hand_by_edge_and_skin_color(frame)
             camera_feed.frame = frame_with_hand
             await asyncio.sleep(1 / fps)  # Simulate processing at given fps
             
