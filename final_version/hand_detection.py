@@ -23,9 +23,10 @@ class HandDetector:
         im= cv2.erode(im, element)
         im= cv2.erode(im, element)
         im= cv2.dilate(im, element)
+
         return im
     
-    def to_skeleton(self, im, element=cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)), counter_max=200) -> typing.MatLike : 
+    def to_skeleton(self, im, element=cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)), counter_max=200) -> typing.MatLike: 
         skeleton = np.zeros(im.shape, dtype="uint8")
         counter = 0
         while(counter<counter_max):
@@ -43,26 +44,60 @@ class HandDetector:
     
     def add_images(self, im1, im2) -> typing.MatLike:
         return cv2.add(im1, im2)
-    
-    def max_distance_from(self, skeleton: typing.MatLike, edges: typing.MatLike, distance = 125) -> typing.MatLike:
-        
-        # (x, y) = np.nonzero(skeleton)
-        
-        # x_float32 = x[:].astype(np.float32)
-        # y_float32 = y[:].astype(np.float32)
-        
-        # points = np.array(list(zip(x_float32, y_float32)))
 
-        # countours = np.array(edges).reshape((-1,1,2)).astype(np.int32)
-        
-        # corrent_points = np.zeros(skeleton.shape)
-        
-        # for point in points: #type: ignore
-        #     eredmeny = cv2.pointPolygonTest(countours, point, True)
-        #     if abs(eredmeny) > distance:
-        #         corrent_points[int(point[0])][int(point[1])] = 255
+    def create_circular_mask(self, h, w, center=None, radius=None):
+
+        if center is None: 
+            center = (int(w/2), int(h/2))
+        if radius is None: 
+            radius = min(center[0], center[1], w-center[0], h-center[1])
+
+        Y, X = np.ogrid[:h, :w]
+        dist_from_center = np.sqrt((X - center[0])**2 + (Y-center[1])**2)
+
+        mask = dist_from_center <= radius
+        return mask
+    
+    def max_distance_from(self, skeleton: typing.MatLike, edges: typing.MatLike, distance = 15) -> typing.MatLike:
+        skeleton =  cv2.pyrDown(cv2.pyrDown(skeleton))
+        edges =  cv2.pyrDown(cv2.pyrDown(edges))
+
+        (x, y) = np.nonzero(skeleton)
+
+        x_float32 = x[:].astype(np.float32)
+        y_float32 = y[:].astype(np.float32)
+
+        points = np.array(list(zip(x_float32, y_float32)))
+        corrent_points = np.zeros(skeleton.shape)
+
+        countours = np.array(edges).reshape((-1,1,2)).astype(np.int32)
+
+
+        for point in points: #type: ignore
+            eredmeny = cv2.pointPolygonTest(countours, point, True)
+            if abs(eredmeny) < distance:
+                corrent_points[int(point[0])][int(point[1])] = 255
                 
-        # return corrent_points
+        return cv2.pyrUp(cv2.pyrUp(corrent_points))
+
+    def finger(self, im):
+        positions = np.nonzero(im)
+
+        if positions[0].size ==0:
+            return (0, 0, 0,0)
+
+        top = positions[0].min()
+        bottom = positions[0].max()
+        left = positions[1].min()
+        right = positions[1].max()
+
+        return (left, top, right, bottom)
+
+    def draw_rect(self, im, coordinates):
+        im = cv2.rectangle(im, (coordinates[0], coordinates[1]), (coordinates[2], coordinates[3]), (0, 255, 0), 1)
+        return im
+
+
         
 
 
