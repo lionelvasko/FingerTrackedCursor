@@ -1,20 +1,62 @@
 import cv2
 import numpy as np
-import copy
-import math
+import imutils
 
 class HandDetector:
     def __init__(self):
-        # Skin HSV range
-        self.lower = np.array([0, 48, 80], dtype="uint8")
-        self.upper = np.array([20, 255, 255], dtype="uint8")
-        # Background subtractor for motion stabilization
+        self.lower = np.array([0, 0, 0], dtype="uint8")
+        self.upper = np.array([40, 255, 255], dtype="uint8")
         self.bg_subtractor = cv2.createBackgroundSubtractorMOG2(history=50, varThreshold=50, detectShadows=False)
-        # Stability
         self.prev_contour = None
         self.stability_counter = 0
 
-    def detect_hands(self, frame):
+    def detect_hand_by_hls_adaptive_threshold(self, frame):
+        """HLS színtér alapú kézdetektálás adaptív küszöböléssel"""
+        # Kép előfeldolgozás
+        im = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS_FULL)
+        im = cv2.inRange(im, self.lower, self.upper)
+
+        im = cv2.GaussianBlur(im, (7, 7), 3)
+
+        # Adaptív küszöbölés és invertálás
+        thresh = cv2.adaptiveThreshold(
+            im, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY, 11, 2
+        )
+        thresh = cv2.bitwise_not(thresh)
+
+        # Fix küszöbölés is (ha az adaptív nem elég)
+        _, th = cv2.threshold(im, 200, 255, cv2.THRESH_BINARY)
+
+        # Kontúrok keresése
+        contours = cv2.findContours(th, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours = imutils.grab_contours(contours)
+        if len(contours) == 0:
+            return frame, 0  # nincs kéz
+
+        # Legnagyobb kontúr (legvalószínűbb kéz)
+        cnt = max(contours, key=cv2.contourArea)
+        cv2.drawContours(frame, [cnt], -1, (0, 255, 0), 2)
+
+        # Convex hull + defects számítás
+        epsilon = 0.0005 * cv2.arcLength(cnt, True)
+        approx = cv2.approxPolyDP(cnt, epsilon, True)
+
+        if len(approx) < 3:
+            return frame, 0  # túl kevés pont, nincs kéz
+
+        hull = cv2.convexHull(approx, returnPoints=False)
+        if hull is None or len(hull) < 3:
+            return frame, 0
+
+        defects = cv2.convexityDefects(approx, hull)
+        if defects is None:
+            return frame, 0
+
+        return frame
+
+    def detect_hand_by_edge_and_skin_color(self, frame):
+        """Éldetektálás (Canny) és HSV bőrszín alapú kézdetektálás"""
         # Szürkeárnyalat + GaussianBlur
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         blur = cv2.GaussianBlur(gray, (5, 5), 0)
@@ -48,47 +90,9 @@ class HandDetector:
 
         return frame
 
-    def detect_hands_YCrCb(self, frame):
-        frame_copy = frame.copy()
-        hsv = cv2.cvtColor(frame_copy, cv2.COLOR_BGR2HSV)
 
-        # Skin mask
-        skin_mask = cv2.inRange(hsv, self.lower, self.upper)
-        skin_mask = cv2.blur(skin_mask, (3, 3))
-
-        # Threshold
-        _, thresh = cv2.threshold(skin_mask, 100, 255, cv2.THRESH_BINARY)
-
-        # Kontúrok keresése
-        contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        detected_contour = None
-
-        if contours:
-            detected_contour = max(contours, key=lambda x: cv2.contourArea(x))
-            if cv2.contourArea(detected_contour) < 5000:  # minimum méret
-                detected_contour = None
-
-        # Stabilizálás
-        if detected_contour is not None:
-            self.prev_contour = detected_contour
-            self.stability_counter = 3
-        else:
-            self.stability_counter -= 1
-            if self.stability_counter <= 0:
-                self.prev_contour = None
-
-        # Rajzolás
-        if self.prev_contour is not None:
-            cv2.drawContours(frame_copy, [self.prev_contour], -1, (0, 255, 0), 2)
-            x, y, w, h = cv2.boundingRect(self.prev_contour)
-            cv2.rectangle(frame_copy, (x, y), (x + w, y + h), (255, 0, 0), 2)
-            cv2.putText(frame_copy, "Hand", (x, y - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-
-        return frame_copy
-    
-
-    def detect_hands_YCrCb_Motion(self, frame):
+    def detect_hand_by_motion_and_skin_color(self, frame):
+        """Mozgásérzékelés (MOG2) és HSV bőrszín alapú kézdetektálás stabilitással"""
         frame_copy = frame.copy()
         h, w = frame_copy.shape[:2]
 
