@@ -12,8 +12,12 @@ async def main(fps=10):
     try:
         while True:
             frame = camera_feed.get_frame()
-            frame_with_hand = hand_detector.detect_hand(frame)
-            camera_feed.displayed_frame = frame_with_hand
+            
+            frame_with_edge = hand_detector.edge_detection(hand_detector.preprocess(frame))
+            frame_with_skeleton = hand_detector.to_skeleton(hand_detector.preprocess(frame))
+            
+            camera_feed.displayed_frame = hand_detector.max_distance_from(frame_with_skeleton,frame_with_edge)
+            camera_feed.displayed_frame2 = frame_with_skeleton
             await asyncio.sleep(1/fps)  # Simulate processing at given fps
             
     except KeyboardInterrupt:

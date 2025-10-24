@@ -2,6 +2,7 @@ import cv2
 
 class CameraFeed:
     displayed_frame = None
+    displayed_frame2 = None
     read_frame = None
 
     def __init__(self, fps):
@@ -17,17 +18,21 @@ class CameraFeed:
         if frame is not None:
             self.read_frame = frame
         cv2.namedWindow("Camera Feed")
+        cv2.namedWindow("Camera Feed2")
         while self.there_is_frame:
             # flip horizontally for a mirrored camera view
             if self.displayed_frame is None:
                 self.displayed_frame = self.read_frame
+                self.displayed_frame2 = self.read_frame
             flipped = cv2.flip(self.displayed_frame, 1) #type:ignore
             cv2.imshow("Camera Feed", flipped)
+            cv2.imshow("Camera Feed2", cv2.flip(self.displayed_frame2,1)) #type:ignore
             self.there_is_frame, self.read_frame = self.vc.read()
             key = cv2.waitKey(20)
             if key == 27: # exit on ESC
                 self.close()
         cv2.destroyWindow("Camera Feed")
+        cv2.destroyWindow("Camera Feed2")
 
     def close(self):
         if self.vc.isOpened():

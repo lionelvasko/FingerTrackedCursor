@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import imutils
+from cv2 import typing
 
 class HandDetector:
     def __init__(self):
@@ -10,7 +11,7 @@ class HandDetector:
         self.prev_contour = None
         self.stability_counter = 0
 
-    def detect_hand(self, frame):
+    def preprocess(self, frame)-> typing.MatLike:
         im = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         im = cv2.GaussianBlur(im, (5, 5), sigmaX=2.0, sigmaY=2.0)
         im = cv2.inRange(
@@ -22,9 +23,12 @@ class HandDetector:
         im= cv2.erode(im, element)
         im= cv2.erode(im, element)
         im= cv2.dilate(im, element)
+        return im
+    
+    def to_skeleton(self, im, element=cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)), counter_max=200) -> typing.MatLike : 
         skeleton = np.zeros(im.shape, dtype="uint8")
         counter = 0
-        while(counter<500):
+        while(counter<counter_max):
             eroded = cv2.erode(im, element)
             temp = cv2.dilate(eroded, element)
             temp = cv2.subtract(im, temp)
@@ -32,6 +36,35 @@ class HandDetector:
             im = eroded.copy()
             counter+=1
         return skeleton
+    
+    def edge_detection(self, im) -> typing.MatLike:
+        im = cv2.Laplacian(im, cv2.CV_8U, ksize=3)
+        return im
+    
+    def add_images(self, im1, im2) -> typing.MatLike:
+        return cv2.add(im1, im2)
+    
+    def max_distance_from(self, skeleton: typing.MatLike, edges: typing.MatLike, distance = 125) -> typing.MatLike:
+        
+        # (x, y) = np.nonzero(skeleton)
+        
+        # x_float32 = x[:].astype(np.float32)
+        # y_float32 = y[:].astype(np.float32)
+        
+        # points = np.array(list(zip(x_float32, y_float32)))
+
+        # countours = np.array(edges).reshape((-1,1,2)).astype(np.int32)
+        
+        # corrent_points = np.zeros(skeleton.shape)
+        
+        # for point in points: #type: ignore
+        #     eredmeny = cv2.pointPolygonTest(countours, point, True)
+        #     if abs(eredmeny) > distance:
+        #         corrent_points[int(point[0])][int(point[1])] = 255
+                
+        # return corrent_points
+        
+
 
     def detect_hand_by_hls_adaptive_threshold(self, frame):
         """HLS színtér alapú kézdetektálás adaptív küszöböléssel"""
