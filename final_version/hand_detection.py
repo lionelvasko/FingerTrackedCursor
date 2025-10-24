@@ -10,6 +10,29 @@ class HandDetector:
         self.prev_contour = None
         self.stability_counter = 0
 
+    def detect_hand(self, frame):
+        im = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        im = cv2.GaussianBlur(im, (5, 5), sigmaX=2.0, sigmaY=2.0)
+        im = cv2.inRange(
+                im,
+                np.array([ 0, 40, 80 ], dtype="uint8"),
+                np.array([255, 255, 255 ], dtype="uint8"),
+        )
+        element = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+        im= cv2.erode(im, element)
+        im= cv2.erode(im, element)
+        im= cv2.dilate(im, element)
+        skeleton = np.zeros(im.shape, dtype="uint8")
+        counter = 0
+        while(counter<500):
+            eroded = cv2.erode(im, element)
+            temp = cv2.dilate(eroded, element)
+            temp = cv2.subtract(im, temp)
+            skeleton = cv2.bitwise_or(skeleton, temp)
+            im = eroded.copy()
+            counter+=1
+        return skeleton
+
     def detect_hand_by_hls_adaptive_threshold(self, frame):
         """HLS színtér alapú kézdetektálás adaptív küszöböléssel"""
         # Kép előfeldolgozás

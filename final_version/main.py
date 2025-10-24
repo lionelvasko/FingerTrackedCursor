@@ -4,7 +4,7 @@ from hand_detection import HandDetector
 from camera_feed import CameraFeed
 
 
-camera_feed = CameraFeed()
+camera_feed = CameraFeed(10)
 hand_detector = HandDetector()
 
 async def main(fps=10):
@@ -12,9 +12,9 @@ async def main(fps=10):
     try:
         while True:
             frame = camera_feed.get_frame()
-            frame_with_hand = hand_detector.detect_hand_by_edge_and_skin_color(frame)
-            camera_feed.frame = frame_with_hand
-            await asyncio.sleep(1 / fps)  # Simulate processing at given fps
+            frame_with_hand = hand_detector.detect_hand(frame)
+            camera_feed.displayed_frame = frame_with_hand
+            await asyncio.sleep(1/fps)  # Simulate processing at given fps
             
     except KeyboardInterrupt:
         camera_feed.close()
