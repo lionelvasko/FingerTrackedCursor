@@ -11,11 +11,9 @@ class HandDetector:
         self.stability_counter = 0
 
     def detect_hand_by_hls_adaptive_threshold(self, frame):
-        """HLS színtér alapú kézdetektálás adaptív küszöböléssel"""
         # Kép előfeldolgozás
         im = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS_FULL)
         im = cv2.inRange(im, self.lower, self.upper)
-
         im = cv2.GaussianBlur(im, (7, 7), 3)
 
         # Adaptív küszöbölés és invertálás
@@ -25,7 +23,7 @@ class HandDetector:
         )
         thresh = cv2.bitwise_not(thresh)
 
-        # Fix küszöbölés is (ha az adaptív nem elég)
+        # Fix küszöbölés
         _, th = cv2.threshold(im, 200, 255, cv2.THRESH_BINARY)
 
         # Kontúrok keresése
@@ -56,7 +54,6 @@ class HandDetector:
         return frame
 
     def detect_hand_by_edge_and_skin_color(self, frame):
-        """Éldetektálás (Canny) és HSV bőrszín alapú kézdetektálás"""
         # Szürkeárnyalat + GaussianBlur
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         blur = cv2.GaussianBlur(gray, (5, 5), 0)
@@ -92,26 +89,25 @@ class HandDetector:
 
 
     def detect_hand_by_motion_and_skin_color(self, frame):
-        """Mozgásérzékelés (MOG2) és HSV bőrszín alapú kézdetektálás stabilitással"""
         frame_copy = frame.copy()
         h, w = frame_copy.shape[:2]
 
-        # --- 1. Mozgásmaszk ---
+        # 1. Mozgásmaszk
         fg_mask = self.bg_subtractor.apply(frame_copy)
         fg_mask = cv2.GaussianBlur(fg_mask, (5, 5), 0)
         fg_mask = cv2.erode(fg_mask, None, iterations=1)
         fg_mask = cv2.dilate(fg_mask, None, iterations=2)
 
-        # --- 2. Bőrszín maszk ---
+        # 2. Bőrszín maszk
         hsv = cv2.cvtColor(frame_copy, cv2.COLOR_BGR2HSV)
         skin_mask = cv2.inRange(hsv, self.lower, self.upper)
         skin_mask = cv2.GaussianBlur(skin_mask, (3, 3), 0)
 
-        # --- 3. Maszkok kombinálása ---
+        # 3. Maszkok kombinálása
         combined_mask = cv2.bitwise_and(fg_mask, skin_mask)
         _, thresh = cv2.threshold(combined_mask, 50, 255, cv2.THRESH_BINARY)
 
-        # --- 4. Kontúrok ---
+        # 4. Kontúrok
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         detected_contour = None
         if contours:
@@ -119,7 +115,7 @@ class HandDetector:
             if cv2.contourArea(detected_contour) < 3000:  # minimum méret
                 detected_contour = None
 
-        # --- 5. Stabilizálás ---
+        # 5. Stabilizálás
         if detected_contour is not None:
             self.prev_contour = detected_contour
             self.stability_counter = 3
@@ -128,7 +124,7 @@ class HandDetector:
             if self.stability_counter <= 0:
                 self.prev_contour = None
 
-        # --- 6. Rajzolás ---
+        # 6. Rajzolás
         if self.prev_contour is not None:
             cv2.drawContours(frame_copy, [self.prev_contour], -1, (0, 255, 0), 2)
             x, y, w, h = cv2.boundingRect(self.prev_contour)
